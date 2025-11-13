@@ -21,11 +21,23 @@ function loadRoom(roomNum) {
     
     // BOSS ROOM
     if (roomNum % bossInterval === 0) {
-        const bossHp = ENEMY_TYPES.BOSS.hp + Math.floor(roomNum/10) * 30;
+        // Elegir un boss de la lista BOSSES si está disponible, variar HP según sala
+        let bossType = ENEMY_TYPES.BOSS;
+        let bossMeta = null;
+        if (typeof BOSSES !== 'undefined' && Object.keys(BOSSES).length > 0) {
+            const keys = Object.keys(BOSSES);
+            const pick = BOSSES[keys[Math.floor(Math.random() * keys.length)]];
+            bossMeta = pick;
+        }
+        const baseHp = (bossMeta && bossMeta.base_hp) ? bossMeta.base_hp : ENEMY_TYPES.BOSS.hp;
+        const bossHp = baseHp + Math.floor(roomNum/10) * 30;
+        const bossSize = (bossMeta && bossMeta.size) ? bossMeta.size : ENEMY_TYPES.BOSS.size;
+        const bossColor = (bossMeta && bossMeta.color) ? bossMeta.color : ENEMY_TYPES.BOSS.color;
+        const bossTypeClone = Object.assign({}, ENEMY_TYPES.BOSS, { color: bossColor, size: bossSize, is_boss: true });
         enemies.push({
             x: CONFIG.CANVAS_W/2,
             y: CONFIG.CANVAS_H/2 - 20,
-            type: ENEMY_TYPES.BOSS,
+            type: bossTypeClone,
             hp: bossHp,
             maxHp: bossHp,
             shootTimer: 1.0,
@@ -34,6 +46,7 @@ function loadRoom(roomNum) {
             spiralAngle: 0,
             moveDir: 1
         });
+        try { console.log('[BOSS SPAWN]', { room: roomNum, hp: bossHp, size: bossSize, color: bossColor, x: CONFIG.CANVAS_W/2, y: CONFIG.CANVAS_H/2 - 20 }); } catch (e) {}
         // Crear trampas alrededor del mapa (anillo) que se mueven y telegrafían su próxima posición
         const trapCount = 12;
         const cx = CONFIG.CANVAS_W/2;
@@ -65,6 +78,7 @@ function loadRoom(roomNum) {
                 _nextAngle: null
             });
         }
+        try { console.log('[ROOM]', roomNum, '-> BOSS ROOM (interval', bossInterval, ')'); } catch (e) {}
         return;
     }
 
@@ -136,4 +150,22 @@ function loadRoom(roomNum) {
         enemies.push(enemy);
         spawned.push(enemy);
     }
+
+    // Generación de cofres cada CONFIG.CHEST_INTERVAL habitaciones (posición aleatoria)
+    const chestInterval = (typeof CONFIG !== 'undefined' && CONFIG.CHEST_INTERVAL) ? CONFIG.CHEST_INTERVAL : 3;
+    if (roomNum % chestInterval === 0) {
+        // 80% cofre normal con skill, 20% mimic
+        const isMimic = Math.random() < 0.20;
+        const cx = 120 + Math.random() * (CONFIG.CANVAS_W - 240);
+        const cy = 120 + Math.random() * (CONFIG.CANVAS_H - 240);
+        if (isMimic) {
+            // Spawn a mimic enemy at chest position
+            const mimicType = ENEMY_TYPES.MIMIC || { color: '#d35400', size: 24, hp: 4 };
+            enemies.push({ x: cx, y: cy, type: mimicType, hp: mimicType.hp, maxHp: mimicType.hp, shootTimer: 1.0, moveTimer: 1.0, moveSpeed: 30 });
+        } else {
+            // Represent a chest as a hazard of type 'chest' so UI can render it and player can open it
+            hazards.push({ type: 'chest', x: cx, y: cy, r: 20, opened: false, containsSkill: true });
+        }
+    }
+    try { console.log('[ROOM]', roomNum, '-> NORMAL ROOM'); } catch (e) {}
 }

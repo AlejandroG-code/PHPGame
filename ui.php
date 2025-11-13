@@ -30,15 +30,7 @@
 
 <script>
 // updateUI ahora está definido aquí y se ejecutará después de que el main script haya definido
-// las variables globales (player, CONFIG, totalKills, etc.).
-window.updateUI = function() {
-    const statsEl = document.querySelector('.stats');
-    const menuActive = document.getElementById('menuScreen').classList.contains('active');
-    const deathActive = document.getElementById('deathScreen').classList.contains('active');
-    if (statsEl) {
-        statsEl.style.display = (!menuActive && !deathActive && typeof gameStarted !== 'undefined' && gameStarted) ? 'block' : 'none';
-    }
-
+function updateUI() {
     const hf = document.getElementById('healthFill');
     const ht = document.getElementById('healthText');
     if (hf && typeof player !== 'undefined') {
@@ -75,7 +67,17 @@ window.updateUI = function() {
     if (r) r.textContent = (typeof currentRoom !== 'undefined' ? currentRoom : 1);
     const k = document.getElementById('kills');
     if (k) k.textContent = (typeof totalKills !== 'undefined' ? totalKills : 0);
-};
+}
+</script>
+
+<script>
+// Precarga de sprites del jugador (moai)
+window.SPRITES = window.SPRITES || {};
+['sprt_moai_back','sprt_moai_front','sprt_moai_left','sprt_moai_right'].forEach(name => {
+    const img = new Image();
+    img.src = 'sprites/moai/' + name + '.png';
+    window.SPRITES[name] = img;
+});
 </script>
 
 <!-- Pantallas (menú / muerte) movidas a ui.php para centralizar la UI -->
@@ -90,7 +92,7 @@ window.updateUI = function() {
 
 <!-- Pantalla de muerte -->
 <div id="deathScreen" class="screen">
-    <h2>💀 GAME OVER 💀</h2>
+    <h2 id="deathTitle">💀 GAME OVER 💀</h2>
     <div class="stats-final">
         <p>Habitación alcanzada: <strong id="finalRoom">0</strong></p>
         <p>Enemigos eliminados: <strong id="finalKills">0</strong></p>
@@ -194,7 +196,9 @@ function updateParticles(dt) {
         p.y += p.vy * dt;
         p.vy += (p.gravity || 0) * dt;
         p.vx *= 0.97;
-        p.life -= dt * 2;
+        // allow different decay speeds per particle for richer effects
+        const decay = (p.decayMult || 2);
+        p.life -= dt * decay;
         if (p.life <= 0) {
             window.particles.splice(i, 1);
         }
@@ -202,14 +206,45 @@ function updateParticles(dt) {
 }
 
 function drawParticles() {
+    // Draw particles with gradients and additive blending when requested
     for (let p of window.particles) {
-        const alpha = p.life / p.maxLife;
+        const alpha = Math.max(0, Math.min(1, p.life / (p.maxLife || 1)));
         ctx.save();
+        if (p.blend === 'lighter') ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = alpha;
-        ctx.fillStyle = p.color;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+        // radial glow for nicer visuals
+        const pr = Math.max(1, p.size || 2);
+        // defensive: ensure numeric positions
+        const px = Number(p.x);
+        const py = Number(p.y);
+        const safePr = Number(pr);
+        if (!isFinite(px) || !isFinite(py) || !isFinite(safePr)) {
+            // fallback: skip gradient and draw minimal marker if invalid
+            if (isFinite(px) && isFinite(py)) {
+                ctx.fillStyle = (p.color || '#fff');
+                ctx.beginPath(); ctx.arc(px, py, 2, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.restore();
+            continue;
+        }
+        try {
+            const grad = ctx.createRadialGradient(px, py, 0, px, py, safePr * 3);
+            grad.addColorStop(0, p.color);
+            grad.addColorStop(0.4, p.color);
+            grad.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = grad;
+            ctx.beginPath();
+            ctx.arc(px, py, safePr * 3, 0, Math.PI * 2);
+            ctx.fill();
+            // core
+            ctx.globalAlpha = alpha;
+            ctx.fillStyle = p.color;
+            ctx.beginPath(); ctx.arc(px, py, safePr, 0, Math.PI * 2); ctx.fill();
+        } catch (err) {
+            // fallback rendering if gradient creation fails
+            ctx.fillStyle = (p.color || '#fff');
+            ctx.beginPath(); ctx.arc(px, py, Math.max(1, safePr), 0, Math.PI*2); ctx.fill();
+        }
         ctx.restore();
     }
 }
@@ -355,7 +390,11 @@ function draw() {
     
     if (doorOpen) {
         // Puerta abierta con resplandor verde
-        const doorGlow = ctx.createRadialGradient(doorX + doorW/2, CONFIG.BORDER/2, 0, doorX + doorW/2, CONFIG.BORDER/2, 60);
+    // defensiva: asegurar valores finitos
+    const dg_cx = Number(doorX + doorW/2) || 0;
+    const dg_cy = Number(CONFIG.BORDER/2) || 0;
+    const dg_r = 60;
+    const doorGlow = ctx.createRadialGradient(dg_cx, dg_cy, 0, dg_cx, dg_cy, dg_r);
         doorGlow.addColorStop(0, `rgba(76, 175, 80, ${doorPulse * 0.6})`);
         doorGlow.addColorStop(0.5, `rgba(76, 175, 80, ${doorPulse * 0.3})`);
         doorGlow.addColorStop(1, 'rgba(76, 175, 80, 0)');
@@ -395,6 +434,25 @@ function draw() {
     // Enemigos
     // Dibujar hazards (debajo de los enemigos para que se vean como obstáculos)
     for (let h of (typeof hazards !== 'undefined' ? hazards : [])) {
+        // Dibujo adicional para cofres
+        if (h.type === 'chest') {
+            // Si ya abierto, dibujar como marcador pequeño
+            if (h.opened) {
+                ctx.fillStyle = 'rgba(200,200,200,0.25)';
+                ctx.beginPath(); ctx.rect(h.x-8, h.y-6, 16, 12); ctx.fill();
+            } else {
+                // Chest closed: dibujar cofres dorados
+                ctx.save();
+                ctx.translate(h.x, h.y);
+                ctx.fillStyle = '#c49b2d';
+                ctx.fillRect(-14, -10, 28, 18);
+                ctx.fillStyle = '#6b4f12';
+                ctx.fillRect(-6, -8, 12, 6);
+                ctx.strokeStyle = '#45320a'; ctx.lineWidth = 2; ctx.strokeRect(-14, -10, 28, 18);
+                ctx.restore();
+            }
+            continue;
+        }
         if (h.type === 'web') {
             // Telaraña - gris translúcido
             ctx.fillStyle = 'rgba(200,200,255,0.15)';
@@ -415,7 +473,11 @@ function draw() {
             ctx.stroke();
         } else if (h.type === 'fire') {
             // Piscina de fuego - rojo/naranja
-            const fireGradient = ctx.createRadialGradient(h.x, h.y, 0, h.x, h.y, h.r);
+            // defensiva para radius no finito
+            const fg_cx = Number(h.x) || 0;
+            const fg_cy = Number(h.y) || 0;
+            const fg_r = isFinite(h.r) ? Number(h.r) : 40;
+            const fireGradient = ctx.createRadialGradient(fg_cx, fg_cy, 0, fg_cx, fg_cy, fg_r);
             fireGradient.addColorStop(0, 'rgba(255,100,0,0.4)');
             fireGradient.addColorStop(0.5, 'rgba(255,50,0,0.2)');
             fireGradient.addColorStop(1, 'rgba(200,0,0,0.05)');
@@ -497,14 +559,20 @@ function draw() {
         ctx.fill();
         ctx.restore();
 
-        // Enemigo con gradiente radial
-        const enemyGrad = ctx.createRadialGradient(e.x - e.type.size/4, e.y - e.type.size/4, 0, e.x, e.y, e.type.size/2);
-        enemyGrad.addColorStop(0, e.type.color);
-        const darkerColor = e.type.color.replace(/rgb\((\d+),(\d+),(\d+)\)/, (m, r, g, b) => 
-            `rgb(${Math.max(0, r * 0.6)},${Math.max(0, g * 0.6)},${Math.max(0, b * 0.6)})`
-        );
-        enemyGrad.addColorStop(1, darkerColor || e.type.color);
-        ctx.fillStyle = enemyGrad;
+        // Enemigo con gradiente radial (defensiva: validar coords)
+        const et_size = isFinite(e.type && e.type.size) ? Number(e.type.size) : 20;
+        const ex = Number(e.x), ey = Number(e.y);
+        if (isFinite(ex) && isFinite(ey)) {
+            const enemyGrad = ctx.createRadialGradient(ex - et_size/4, ey - et_size/4, 0, ex, ey, et_size/2);
+            enemyGrad.addColorStop(0, e.type.color);
+            const darkerColor = (e.type.color || '').replace(/rgb\((\d+),(\d+),(\d+)\)/, (m, r, g, b) => 
+                `rgb(${Math.max(0, r * 0.6)},${Math.max(0, g * 0.6)},${Math.max(0, b * 0.6)})`
+            );
+            enemyGrad.addColorStop(1, darkerColor || e.type.color);
+            ctx.fillStyle = enemyGrad;
+        } else {
+            ctx.fillStyle = e.type.color || '#999';
+        }
         ctx.beginPath();
         ctx.arc(e.x, e.y, e.type.size/2, 0, Math.PI*2);
         ctx.fill();
@@ -523,6 +591,16 @@ function draw() {
         ctx.arc(e.x, e.y, e.type.size/2, 0, Math.PI*2);
         ctx.stroke();
 
+        // Debug: marca de posición para cualquier enemigo (pequeña cruz)
+        try {
+            ctx.save();
+            ctx.strokeStyle = e.type && e.type.is_boss ? '#FFD700' : 'rgba(255,255,255,0.5)';
+            ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(e.x-4, e.y); ctx.lineTo(e.x+4, e.y); ctx.stroke();
+            ctx.beginPath(); ctx.moveTo(e.x, e.y-4); ctx.lineTo(e.x, e.y+4); ctx.stroke();
+            ctx.restore();
+        } catch (err) {}
+
         // Barra de vida mejorada
         const barW = e.type.size + 4;
         ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
@@ -532,7 +610,7 @@ function draw() {
         ctx.fillRect(e.x - barW/2, e.y - e.type.size/2 - 12, barW * (e.hp / e.maxHp), 6);
 
         // BOSS REMASTERIZADO con efectos por fase
-        if (e.type === ENEMY_TYPES.BOSS) {
+        if (e.type && e.type.is_boss) {
             const phase = e.visualPhase || 1;
             const bossPulse = 0.6 + Math.sin(time * 4) * 0.4;
             
@@ -548,11 +626,17 @@ function draw() {
             
             // Aura exterior más grande en fase 4
             const auraSize = phase === 4 ? 50 : 35;
-            const bossAura = ctx.createRadialGradient(e.x, e.y, e.type.size/2, e.x, e.y, e.type.size/2 + auraSize);
-            bossAura.addColorStop(0, 'rgba(' + rgb + ', 0)');
-            bossAura.addColorStop(0.5, `rgba(${rgb}, ${bossPulse * (phase === 4 ? 0.3 : 0.15)})`);
-            bossAura.addColorStop(1, 'rgba(' + rgb + ', 0)');
-            ctx.fillStyle = bossAura;
+            const bt_size = isFinite(e.type && e.type.size) ? Number(e.type.size) : 50;
+            const bex = Number(e.x), bey = Number(e.y);
+            if (isFinite(bex) && isFinite(bey)) {
+                const bossAura = ctx.createRadialGradient(bex, bey, bt_size/2, bex, bey, bt_size/2 + auraSize);
+                bossAura.addColorStop(0, 'rgba(' + rgb + ', 0)');
+                bossAura.addColorStop(0.5, `rgba(${rgb}, ${bossPulse * (phase === 4 ? 0.3 : 0.15)})`);
+                bossAura.addColorStop(1, 'rgba(' + rgb + ', 0)');
+                ctx.fillStyle = bossAura;
+            } else {
+                ctx.fillStyle = `rgba(${rgb}, ${bossPulse * 0.15})`;
+            }
             ctx.beginPath();
             ctx.arc(e.x, e.y, e.type.size/2 + auraSize, 0, Math.PI*2);
             ctx.fill();
@@ -620,34 +704,47 @@ function draw() {
         }
     }
 
-    // Jugador con sombra y brillo
+    // Jugador con sprite (Moai) - usar imagen según player.facing
     if (typeof player !== 'undefined') {
-        // Sombra difusa
+        const spriteName = (player.facing === 'up') ? 'sprt_moai_back' :
+                           (player.facing === 'down') ? 'sprt_moai_front' :
+                           (player.facing === 'left') ? 'sprt_moai_left' :
+                           (player.facing === 'right') ? 'sprt_moai_right' : 'sprt_moai_front';
+
+        const img = (window.SPRITES && window.SPRITES[spriteName]) ? window.SPRITES[spriteName] : null;
+        // Sombra difusa (debajo del sprite)
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-        ctx.shadowBlur = 12;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 8;
-        ctx.fillStyle = '#1976D2';
-        ctx.fillRect(player.x, player.y, player.w, player.h);
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetY = 6;
+        ctx.fillStyle = 'rgba(0,0,0,0.3)';
+        ctx.beginPath(); ctx.ellipse(player.x + player.w/2, player.y + player.h + 6, player.w/1.8, player.h/4, 0, 0, Math.PI*2); ctx.fill();
         ctx.restore();
-        
-        // Cuerpo principal con gradiente
-        const playerGrad = ctx.createLinearGradient(player.x, player.y, player.x, player.y + player.h);
-        playerGrad.addColorStop(0, '#29B5F6');
-        playerGrad.addColorStop(1, '#1976D2');
-        ctx.fillStyle = playerGrad;
-        ctx.fillRect(player.x, player.y, player.w, player.h);
-        
-        // Brillo superior
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-        ctx.fillRect(player.x + 2, player.y + 2, player.w - 4, player.h / 3);
-        
-        // Contorno
-        ctx.strokeStyle = '#0D47A1';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(player.x, player.y, player.w, player.h);
-        
+
+        if (img && img.complete && img.naturalWidth) {
+            // Calcular escala para ajustar al tamaño del jugador
+            const scaleW = player.w / img.width;
+            const scaleH = player.h / img.height;
+            const s = Math.max(scaleW, scaleH);
+            const drawW = img.width * s;
+            const drawH = img.height * s;
+            const dx = player.x + (player.w - drawW) / 2;
+            const dy = player.y + (player.h - drawH) / 2;
+            ctx.drawImage(img, dx, dy, drawW, drawH);
+        } else {
+            // Fallback: rectángulo con gradiente
+            ctx.save();
+            const playerGrad = ctx.createLinearGradient(player.x, player.y, player.x, player.y + player.h);
+            playerGrad.addColorStop(0, '#29B5F6');
+            playerGrad.addColorStop(1, '#1976D2');
+            ctx.fillStyle = playerGrad;
+            ctx.fillRect(player.x, player.y, player.w, player.h);
+            ctx.fillStyle = 'rgba(255,255,255,0.25)';
+            ctx.fillRect(player.x + 2, player.y + 2, player.w - 4, player.h / 3);
+            ctx.strokeStyle = '#0D47A1'; ctx.lineWidth = 2; ctx.strokeRect(player.x, player.y, player.w, player.h);
+            ctx.restore();
+        }
+
         // Resplandor si tiene escudo
         if (player.effects && player.effects.shieldTimer > 0) {
             const shieldPulse = 0.5 + Math.sin(time * 8) * 0.3;
@@ -660,24 +757,29 @@ function draw() {
     // Balas jugador con efecto de estela
     for (let b of (typeof bullets !== 'undefined' ? bullets : [])) {
         // Resplandor
-        const bulletGlow = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, b.r * 3);
-        bulletGlow.addColorStop(0, 'rgba(200, 200, 200, 0.8)');
-        bulletGlow.addColorStop(1, 'rgba(200, 200, 200, 0)');
-        ctx.fillStyle = bulletGlow;
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * 3, 0, Math.PI * 2);
-        ctx.fill();
-        
-        // Núcleo
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-        ctx.fill();
-        
-        ctx.fillStyle = '#d3d3d3';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, b.r * 0.6, 0, Math.PI * 2);
-        ctx.fill();
+    const bx = Number(b.x), by = Number(b.y);
+    const bg_r = isFinite(b.r) ? Number(b.r) * 3 : 12;
+    if (isFinite(bx) && isFinite(by) && isFinite(bg_r)) {
+        try {
+            const bulletGlow = ctx.createRadialGradient(bx, by, 0, bx, by, bg_r);
+            bulletGlow.addColorStop(0, 'rgba(200, 200, 200, 0.8)');
+            bulletGlow.addColorStop(1, 'rgba(200, 200, 200, 0)');
+            ctx.fillStyle = bulletGlow;
+            ctx.beginPath();
+            ctx.arc(bx, by, (isFinite(b.r) ? b.r : 6) * 3, 0, Math.PI * 2);
+            ctx.fill();
+        } catch (err) {
+            ctx.fillStyle = (b.color || '#fff');
+            ctx.beginPath(); ctx.arc(bx, by, (isFinite(b.r) ? b.r : 6) * 2, 0, Math.PI*2); ctx.fill();
+        }
+    } else {
+        if (isFinite(bx) && isFinite(by)) { ctx.fillStyle = (b.color || '#fff'); ctx.beginPath(); ctx.arc(bx, by, (isFinite(b.r) ? b.r : 6) * 2, 0, Math.PI*2); ctx.fill(); }
+    }
+    // Núcleo
+    if (isFinite(bx) && isFinite(by)) {
+        ctx.fillStyle = '#ffffff'; ctx.beginPath(); ctx.arc(bx, by, (isFinite(b.r) ? b.r : 6), 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = '#d3d3d3'; ctx.beginPath(); ctx.arc(bx, by, (isFinite(b.r) ? b.r : 6) * 0.6, 0, Math.PI * 2); ctx.fill();
+    }
     }
 
     // Balas enemigas con estilos por shape/color
@@ -780,7 +882,8 @@ function draw() {
                 break;
             }
             case 'orb_glow': {
-                const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, (b.r||6)*2);
+                const gr = (isFinite(b.r) ? b.r : 6) * 2;
+                const g = ctx.createRadialGradient(b.x, b.y, 0, b.x, b.y, gr);
                 g.addColorStop(0, col);
                 g.addColorStop(1, 'rgba(255,255,255,0)');
                 ctx.fillStyle = g;
@@ -821,7 +924,9 @@ function draw() {
             const centerX = CONFIG.CANVAS_W / 2;
             const centerY = CONFIG.CANVAS_H / 2;
             const maxRad = Math.sqrt(centerX * centerX + centerY * centerY);
-            const sweepGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, maxRad * (1 - rt));
+            const safeMaxRad = isFinite(maxRad) ? maxRad : Math.sqrt((CONFIG.CANVAS_W||800)*(CONFIG.CANVAS_W||800) + (CONFIG.CANVAS_H||600)*(CONFIG.CANVAS_H||600));
+            const sweepRadius = safeMaxRad * (isFinite(1 - rt) ? (1 - rt) : 1);
+            const sweepGrad = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, sweepRadius);
             sweepGrad.addColorStop(0, 'rgba(243, 156, 18, 0)');
             sweepGrad.addColorStop(0.8, `rgba(243, 156, 18, ${rt * 0.15})`);
             sweepGrad.addColorStop(1, `rgba(243, 156, 18, ${rt * 0.3})`);
@@ -863,6 +968,22 @@ function draw() {
     // Player trail (estela de movimiento)
     drawPlayerTrail();
     
+    // Texto de sala de boss si hay un jefe presente
+    try {
+        const bossPresent = Array.isArray(enemies) && enemies.some(en => en && en.type && en.type.is_boss);
+        if (bossPresent) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 215, 0, 0.95)';
+            ctx.font = 'bold 24px Arial';
+            ctx.textAlign = 'center';
+            ctx.strokeStyle = 'rgba(0,0,0,0.8)';
+            ctx.lineWidth = 4;
+            ctx.strokeText('⚔ BOSS ROOM ⚔', CONFIG.CANVAS_W/2, CONFIG.BORDER + 28);
+            ctx.fillText('⚔ BOSS ROOM ⚔', CONFIG.CANVAS_W/2, CONFIG.BORDER + 28);
+            ctx.restore();
+        }
+    } catch (e) { /* ignore */ }
+
     // Partículas (explosiones, efectos)
     drawParticles();
     

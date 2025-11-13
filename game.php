@@ -9,11 +9,11 @@ $config = [
     'canvas_width' => 1400,         // px - MUCHO MÁS GRANDE
     'canvas_height' => 700,         // px - MÁS ESPACIO VERTICAL
     'player_speed' => 280,          // px/s - MÁS RÁPIDO Y RESPONSIVO
-    'player_size' => 28,            // px - HITBOX MÁS PEQUEÑA
-    'player_health' => 60,         // HP - MÁS HEALTH PARA BALANCEAR
+    'player_size' => 40,            // px - HITBOX MÁS PEQUEÑA
+    'player_health' => 50,         // HP - MÁS HEALTH PARA BALANCEAR
     'bullet_speed' => 550,          // px/s - BALAS MÁS RÁPIDAS
     'enemy_bullet_speed' => 160,    // px/s - ENEMIGOS MÁS LENTOS = ESQUIVABLE
-    'max_rooms' => 30               // numero maximo de habitaciones antes de reiniciar
+    'max_rooms' => 100               // numero maximo de habitaciones antes de reiniciar
 ];
 
 // incluir definiciones modulares (armas, ataques, enemigos, mundo)
@@ -22,6 +22,7 @@ include __DIR__ . '/attacks.php';
 include __DIR__ . '/enemies.php';
 include __DIR__ . '/world.php';
 include __DIR__ . '/skills.php';
+include __DIR__ . '/bosses.php';
 
 ?>
 <!DOCTYPE html>
@@ -353,6 +354,10 @@ include __DIR__ . '/skills.php';
     <script>
     <?php include __DIR__ . '/client_config.php'; ?>
 
+    // Exponer número máximo de habitaciones y frecuencia de cofres al cliente
+    CONFIG.MAX_ROOMS = <?php echo (int)$config['max_rooms']; ?>;
+    CONFIG.CHEST_INTERVAL = 3; // cada 3 habitaciones puede aparecer un cofre
+
     // Sanity defaults to avoid invisible entities if PHP config is missing
     CONFIG.CANVAS_W = Math.max(CONFIG.CANVAS_W || 0, 600);
     CONFIG.CANVAS_H = Math.max(CONFIG.CANVAS_H || 0, 400);
@@ -377,7 +382,8 @@ include __DIR__ . '/skills.php';
         h: CONFIG.PLAYER_SIZE, 
         health: CONFIG.MAX_HEALTH,
         shootCooldown: 0,
-        effects: { poisonTimer: 0, poisonTick: 0, poisonTickInterval: 0, slowTimer: 0, slowAmount: 0 }
+        effects: { poisonTimer: 0, poisonTick: 0, poisonTickInterval: 0, slowTimer: 0, slowAmount: 0 },
+        facing: 'down' // 'up','down','left','right'
     };
 
     var keys = { left:false, right:false, up:false, down:false };

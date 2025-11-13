@@ -63,6 +63,12 @@ function update(dt) {
     let mx = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
     let my = (keys.down ? 1 : 0) - (keys.up ? 1 : 0);
 
+    // Actualizar facing del jugador según input: preferir vertical si hay movimiento vertical, sino horizontal
+    if (my < 0) player.facing = 'up';
+    else if (my > 0) player.facing = 'down';
+    else if (mx < 0) player.facing = 'left';
+    else if (mx > 0) player.facing = 'right';
+
     // Inicializar velocidad si no existe
     if (!player.vx) player.vx = 0;
     if (!player.vy) player.vy = 0;
@@ -173,8 +179,8 @@ function update(dt) {
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
 
-        // Movimiento para TODOS los enemigos (no boss)
-        if (e.type !== ENEMY_TYPES.BOSS) {
+        // Movimiento para enemigos NO-boss
+        if (!e.type || !e.type.is_boss) {
             e.moveTimer -= dt;
             e.x += e.vx * dt + Math.sin((performance.now()/1000) + i) * 6 * dt;
             e.y += e.vy * dt + Math.cos((performance.now()/1000) + i) * 6 * dt;
@@ -340,17 +346,80 @@ function update(dt) {
     }
     } // Fin del if (!timeStopped) para balas
 
+    // Limpieza y muertes por habilidades/otros daños (enemigos con hp <= 0)
+    for (let j = enemies.length - 1; j >= 0; j--) {
+        const e = enemies[j];
+        if (e.hp <= 0) {
+            if (typeof createExplosion === 'function') {
+                const color = e.type && e.type.color ? e.type.color : '#fff';
+                const size = e.type && e.type.size ? e.type.size : 20;
+                createExplosion(e.x, e.y, color, size);
+            }
+            // Efectos visuales al matar
+            if (e.type && e.type.is_boss) {
+                if (typeof shakeScreen === 'function') shakeScreen(20, 0.5);
+                if (typeof triggerSlowMo === 'function') triggerSlowMo(1.2, 0.3);
+            } else {
+                if (typeof shakeScreen === 'function') shakeScreen(4, 0.15);
+                if (typeof triggerSlowMo === 'function') triggerSlowMo(0.15, 0.6);
+            }
+            enemies.splice(j, 1);
+            totalKills++;
+            if (typeof checkSkillMilestone === 'function') {
+                checkSkillMilestone();
+            }
+        }
+    }
+
     // Verificar habitación limpia
     if (enemies.length === 0 && !roomCleared) {
         roomCleared = true;
+    }
+
+    // Revisar cofres: abrir si el jugador se acerca
+    for (let i = hazards.length - 1; i >= 0; i--) {
+        const h = hazards[i];
+        if (h.type === 'chest' && !h.opened) {
+            // distancia simple
+            const dx = (player.x + player.w/2) - h.x;
+            const dy = (player.y + player.h/2) - h.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            if (dist < 40) {
+                // Abrir cofre
+                h.opened = true;
+                // 10% de chance a mimic extra en abrir
+                if (Math.random() < 0.10) {
+                    const mimicType = ENEMY_TYPES.MIMIC || { color: '#d35400', size: 24, hp: 4 };
+                    enemies.push({ x: h.x, y: h.y, type: mimicType, hp: mimicType.hp, maxHp: mimicType.hp, shootTimer: 1.0, moveTimer: 1.0, moveSpeed: 30 });
+                } else {
+                    // Otorgar habilidad al jugador (elegir skill al azar)
+                    if (typeof SKILLS !== 'undefined' && Object.keys(SKILLS).length > 0) {
+                        const keys = Object.keys(SKILLS);
+                        const pick = keys[Math.floor(Math.random() * keys.length)];
+                        if (typeof chooseSkill === 'function') {
+                            // Si overlay no está activo, otorgar automáticamente
+                            if (!skillOverlayActive) {
+                                chooseSkill(pick);
+                            } else {
+                                // si overlay está activo, simplemente push a pending choices
+                                pendingSkillChoices.push(pick);
+                                renderSkillOverlay();
+                            }
+                        } else if (typeof acquiredSkills !== 'undefined') {
+                            if (acquiredSkills.indexOf(pick) === -1) acquiredSkills.push(pick);
+                        }
+                    }
+                }
+            }
+        }
     }
 
     // Avanzar a siguiente habitación
     if (roomCleared && player.y < 60 && 
         player.x > CONFIG.CANVAS_W/2 - 50 && 
         player.x < CONFIG.CANVAS_W/2 + 50) {
-        
         if (currentRoom >= CONFIG.MAX_ROOMS) {
+            // Llegaste al tope: victoria de mazmorra
             showVictoryScreen();
         } else {
             loadRoom(currentRoom + 1);

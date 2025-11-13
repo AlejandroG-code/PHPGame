@@ -179,6 +179,61 @@ $SKILLS = [
         'effect' => 'fire_rate_boost',
         'color' => '#FFD600',
         'multiplier' => 0.6
+    ],
+    'critical_hit' => [
+        'name' => 'Golpe Crítico',
+        'description' => '5% de probabilidad de golpe crítico (x2 daño)',
+        'type' => 'passive',
+        'effect' => 'critical_hit',
+        'color' => '#E040FB',
+        'critChance' => 0.05,
+        'critMultiplier' => 2
+    ],
+    'explosive_bullets' => [
+        'name' => 'Balas Explosivas',
+        'description' => 'Las balas explotan al impactar, dañando en área',
+        'type' => 'passive',
+        'effect' => 'explosive_bullets',
+        'color' => '#FF3D00',
+        'explosionRadius' => 50,
+        'explosionDamage' => 4
+    ],
+    'life_steal' => [
+        'name' => 'Robo de Vida',
+        'description' => 'Roba 2 HP por cada enemigo derrotado',
+        'type' => 'passive',
+        'effect' => 'life_steal',
+        'color' => '#D500F9',
+        'stealAmount' => 2
+    ],
+    'grenade_launcher' => [
+        'name' => 'Lanzagranadas',
+        'description' => 'Las balas tienen 10% de probabilidad de explotar en granada',
+        'type' => 'passive',
+        'effect' => 'grenade_launcher',
+        'color' => '#FF1744',
+        'grenadeChance' => 0.1,
+        'grenadeRadius' => 70,
+        'grenadeDamage' => 8
+    ],
+    'summon_turret' => [
+        'name' => 'Torreta de Asistencia',
+        'description' => 'Invoca una torreta que dispara a los enemigos cercanos',
+        'type' => 'passive',
+        'effect' => 'summon_turret',
+        'color' => '#2979FF',
+        'turretDuration' => 20,
+        'turretFireRate' => 1,
+        'turretDamage' => 5
+    ],
+    'shockwave' => [
+        'name' => 'Onda de Choque',
+        'description' => 'Al recibir daño, libera una onda que aturde enemigos cercanos',
+        'type' => 'passive',
+        'effect' => 'shockwave',
+        'color' => '#00C853',
+        'radius' => 100,
+        'stunDuration' => 1.5
     ]
 ];
 ?>
