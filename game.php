@@ -8,20 +8,22 @@ ini_set('display_errors', 1);
 $config = [
     'canvas_width' => 1400,         // px - MUCHO MÁS GRANDE
     'canvas_height' => 700,         // px - MÁS ESPACIO VERTICAL
-    'player_speed' => 280,          // px/s - MÁS RÁPIDO Y RESPONSIVO
+    'player_speed' => 200,          // px/s - MÁS RÁPIDO Y RESPONSIVO
     'player_size' => 28,            // px - HITBOX MÁS PEQUEÑA
-    'player_health' => 60,         // HP - MÁS HEALTH PARA BALANCEAR
+    'player_health' => 20,         // HP - MÁS HEALTH PARA BALANCEAR
     'bullet_speed' => 550,          // px/s - BALAS MÁS RÁPIDAS
     'enemy_bullet_speed' => 160,    // px/s - ENEMIGOS MÁS LENTOS = ESQUIVABLE
-    'max_rooms' => 30               // numero maximo de habitaciones antes de reiniciar
+    'max_rooms' => 200              // 200 NIVELES - Boss final en room 200!
 ];
 
-// incluir definiciones modulares (armas, ataques, enemigos, mundo)
+// incluir definiciones modulares (armas, ataques, enemigos, mundo, bosses)
 include __DIR__ . '/guns.php';
 include __DIR__ . '/attacks.php';
 include __DIR__ . '/enemies.php';
 include __DIR__ . '/world.php';
 include __DIR__ . '/skills.php';
+include __DIR__ . '/bosses.php';
+include __DIR__ . '/boss_attacks.php';
 
 ?>
 <!DOCTYPE html>
@@ -395,6 +397,37 @@ include __DIR__ . '/skills.php';
 
     // ===== TIPOS DE ENEMIGOS / datos inyectados por PHP (ahora desde client_data.php) =====
     <?php include __DIR__ . '/client_data.php'; ?>
+
+    // DEBUG: Verificar que BOSSES está cargado correctamente
+    console.log('%c🔍 VERIFICACIÓN DE BOSSES:', 'color: #e67e22; font-size: 14px; font-weight: bold;');
+    console.log('BOSSES definido:', typeof BOSSES !== 'undefined' ? 'SÍ ✅' : 'NO ❌');
+    if (typeof BOSSES !== 'undefined') {
+        console.log('Cantidad de bosses:', Object.keys(BOSSES).length);
+        console.log('Bosses disponibles:', Object.keys(BOSSES).join(', '));
+        console.log('Boss 1:', BOSSES[1] ? BOSSES[1].name : 'NO EXISTE');
+        console.log('Boss 10:', BOSSES[10] ? BOSSES[10].name : 'NO EXISTE');
+        console.log('Boss 20:', BOSSES[20] ? BOSSES[20].name : 'NO EXISTE');
+    }
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    
+    // FUNCIONES DE DEBUG PARA TESTING
+    window.skipToRoom = function(roomNum) {
+        console.log('%c⚡ SKIP A ROOM ' + roomNum, 'color: #e74c3c; font-size: 16px; font-weight: bold;');
+        loadRoom(roomNum);
+        gameStarted = true;
+    };
+    
+    window.skipToBoss = function(bossNum) {
+        const roomNum = bossNum * 10;
+        console.log('%c⚡ SKIP A BOSS ' + bossNum + ' (Room ' + roomNum + ')', 'color: #e74c3c; font-size: 16px; font-weight: bold;');
+        loadRoom(roomNum);
+        gameStarted = true;
+    };
+    
+    console.log('%c💡 COMANDOS DEBUG:', 'color: #3498db; font-weight: bold;');
+    console.log('  skipToRoom(N)  - Ir a la habitación N');
+    console.log('  skipToBoss(N)  - Ir al boss N (1-20)');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
 
     // Usar la configuración del mundo para definir el borde del nivel
     CONFIG.BORDER = (typeof WORLD !== 'undefined' ? WORLD.BORDER : CONFIG.BORDER) || CONFIG.BORDER;

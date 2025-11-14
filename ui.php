@@ -72,7 +72,12 @@ window.updateUI = function() {
     if (ht && typeof player !== 'undefined') ht.textContent = Math.ceil(player.health);
 
     const r = document.getElementById('room');
-    if (r) r.textContent = (typeof currentRoom !== 'undefined' ? currentRoom : 1);
+    if (r && typeof currentRoom !== 'undefined') {
+        // Mostrar progreso hacia boss final
+        const nextBoss = Math.ceil(currentRoom / 10) * 10;
+        const finalBoss = 200;
+        r.textContent = currentRoom + (nextBoss <= finalBoss ? ` (Boss: ${nextBoss})` : ' [FINAL REACHED]');
+    }
     const k = document.getElementById('kills');
     if (k) k.textContent = (typeof totalKills !== 'undefined' ? totalKills : 0);
 };
@@ -84,7 +89,14 @@ window.updateUI = function() {
     <p>WASD - Mover tu personaje</p>
     <p>Flechas - Disparar</p>
     <p>Elimina todos los enemigos para abrir la puerta</p>
-    <p style="margin-top: 20px; font-size: 14px; opacity: 0.6;">Boss cada 10 habitaciones</p>
+    <p style="margin-top: 20px; font-size: 14px; opacity: 0.8; color: #f39c12;">⚔️ 20 BOSSES ÉPICOS ⚔️</p>
+    <p style="font-size: 13px; opacity: 0.7;">Boss cada 10 habitaciones | Boss Final: Room 200</p>
+    <p style="font-size: 12px; opacity: 0.6; margin-top: 10px;">
+        Etapa I (10-50): Territorial<br>
+        Etapa II (60-100): Bestia<br>
+        Etapa III (110-150): Planetaria<br>
+        Etapa IV (160-200): Cósmica
+    </p>
     <button onclick="startGame()">INICIAR JUEGO</button>
 </div>
 
@@ -100,10 +112,84 @@ window.updateUI = function() {
     </div></div>
 </div>
 
+<!-- Pantalla de VICTORIA -->
+<div id="victoryScreen" class="screen" style="display:none;">
+    <h1 style="color: #f1c40f; text-shadow: 0 0 20px rgba(241, 196, 15, 0.8);">👑 ¡VICTORIA TOTAL! 👑</h1>
+    <h2 style="color: #ecf0f1; margin-top: 10px;">Has derrotado a THE ABSOLUTE DEITY</h2>
+    <div class="stats-final" style="margin-top: 30px;">
+        <p style="font-size: 20px; color: #2ecc71;">🏆 JUEGO COMPLETADO 🏆</p>
+        <p style="margin-top: 15px;">Habitación final: <strong style="color: #f39c12;">200</strong></p>
+        <p>Enemigos eliminados: <strong id="victoryKills" style="color: #e74c3c;">0</strong></p>
+        <p style="margin-top: 20px; font-size: 14px; opacity: 0.8;">
+            Has conquistado las 4 etapas:<br>
+            <span style="color: #4CAF50;">✓ Territorial</span> | 
+            <span style="color: #FF9800;">✓ Bestia</span> | 
+            <span style="color: #9C27B0;">✓ Planetaria</span> | 
+            <span style="color: #F44336;">✓ Cósmica</span>
+        </p>
+    </div>
+    <div style="margin-top:30px; display:flex; justify-content:center; gap:20px;">
+        <button onclick="restartFromVictory()" style="background: linear-gradient(135deg, #f39c12, #e67e22);">JUGAR DE NUEVO</button>
+        <button onclick="backFromVictory()">MENÚ</button>
+    </div>
+</div>
+
 <script>
-// === EFECTOS VISUALES AVANZADOS ===
+// === EFECTOS VISUALES AVANZADOS 200% ===
 // Screen shake
 window.screenShake = { x: 0, y: 0, intensity: 0, duration: 0 };
+
+// Chromatic Aberration
+window.chromaticEffect = { active: false, intensity: 0 };
+function triggerChromatic(intensity, duration) {
+    window.chromaticEffect.active = true;
+    window.chromaticEffect.intensity = intensity;
+    window.chromaticEffect.duration = duration;
+}
+
+// Bloom effect
+window.bloomEffect = { active: true, intensity: 0.3 };
+
+// Distorsión temporal
+window.timeDistortion = { active: false, amount: 0 };
+function triggerTimeDistortion(amount, duration) {
+    window.timeDistortion.active = true;
+    window.timeDistortion.amount = amount;
+    window.timeDistortion.duration = duration;
+}
+
+// Background parallax layers
+window.bgLayers = [];
+function initBackgroundLayers() {
+    if (window.bgLayers.length > 0) return;
+    // 3 capas de parallax
+    for (let layer = 0; layer < 3; layer++) {
+        const stars = [];
+        const count = 30 - (layer * 8);
+        for (let i = 0; i < count; i++) {
+            stars.push({
+                x: Math.random() * CONFIG.CANVAS_W,
+                y: Math.random() * CONFIG.CANVAS_H,
+                size: (1 + layer) * (0.8 + Math.random() * 0.4),
+                speed: 0.05 + layer * 0.15,
+                alpha: 0.3 + layer * 0.2,
+                parallaxSpeed: 1 + layer * 0.5
+            });
+        }
+        window.bgLayers.push(stars);
+    }
+}
+
+// Particle pool optimization
+window.particlePool = [];
+window.maxParticles = 500;
+
+// Boss-specific effects
+window.bossEffects = {
+    aura: { rings: [], particles: [] },
+    telegraph: { active: false, x: 0, y: 0, radius: 0, alpha: 0 },
+    phaseTransition: { active: false, progress: 0 }
+};
 function shakeScreen(intensity, duration) {
     window.screenShake.intensity = intensity;
     window.screenShake.duration = duration;
@@ -133,6 +219,19 @@ function updateSlowMo(dt) {
     } else {
         window.slowMotion.active = false;
         window.slowMotion.timeScale = 1;
+    }
+}
+
+// Update chromatic aberration
+function updateChromaticEffect(dt) {
+    if (window.chromaticEffect && window.chromaticEffect.active) {
+        if (window.chromaticEffect.duration > 0) {
+            window.chromaticEffect.duration -= dt;
+            window.chromaticEffect.intensity *= 0.95; // Fade out
+        } else {
+            window.chromaticEffect.active = false;
+            window.chromaticEffect.intensity = 0;
+        }
     }
 }
 
@@ -287,41 +386,95 @@ window.createDrainLine = createDrainLine;
 
 // draw() moved here to keep all UI and menus together in the include.
 function draw() {
+    // Init background layers
+    if (typeof initBackgroundLayers === 'function' && window.bgLayers.length === 0) {
+        initBackgroundLayers();
+    }
+    
     // Apply screen shake
     ctx.save();
     ctx.translate(window.screenShake.x, window.screenShake.y);
     
+    // Apply chromatic aberration if active
+    if (window.chromaticEffect && window.chromaticEffect.active) {
+        const offset = window.chromaticEffect.intensity * 3;
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        ctx.fillStyle = `rgba(255, 0, 0, ${window.chromaticEffect.intensity * 0.3})`;
+        ctx.translate(offset, 0);
+        ctx.fillRect(-50, -50, CONFIG.CANVAS_W + 100, CONFIG.CANVAS_H + 100);
+        ctx.translate(-offset * 2, 0);
+        ctx.fillStyle = `rgba(0, 255, 255, ${window.chromaticEffect.intensity * 0.3})`;
+        ctx.fillRect(-50, -50, CONFIG.CANVAS_W + 100, CONFIG.CANVAS_H + 100);
+        ctx.restore();
+    }
+    
     // keep identical rendering behavior as before
     ctx.clearRect(-50, -50, CONFIG.CANVAS_W + 100, CONFIG.CANVAS_H + 100);
 
-    // Fondo con gradiente mejorado y estrellas animadas
+    // Fondo con gradiente dinámico según tier del boss
+    const time = performance.now() / 1000;
+    let bgColor1 = '#0d0a18', bgColor2 = '#1a1825', bgColor3 = '#2a2438';
+    
+    // Detectar si hay boss y ajustar colores según tier
+    const hasBoss = enemies && enemies.find(e => e.type && (e.type.is_boss || e.bossNumber));
+    if (hasBoss) {
+        const tier = hasBoss.tier || 1;
+        if (tier === 1) {
+            bgColor1 = '#1a0f0f'; bgColor2 = '#2a1520'; bgColor3 = '#3a2030';
+        } else if (tier === 2) {
+            bgColor1 = '#0f1a1a'; bgColor2 = '#152a30'; bgColor3 = '#203a40';
+        } else if (tier === 3) {
+            bgColor1 = '#1a0f1f'; bgColor2 = '#2a1530'; bgColor3 = '#3a2040';
+        } else if (tier === 4) {
+            bgColor1 = '#050508'; bgColor2 = '#0a0a10'; bgColor3 = '#0f0f18';
+        }
+    }
+    
     const gradient = ctx.createLinearGradient(0, 0, 0, CONFIG.CANVAS_H);
-    gradient.addColorStop(0, '#0d0a18');
-    gradient.addColorStop(0.5, '#1a1825');
-    gradient.addColorStop(1, '#2a2438');
+    gradient.addColorStop(0, bgColor1);
+    gradient.addColorStop(0.5, bgColor2);
+    gradient.addColorStop(1, bgColor3);
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, CONFIG.CANVAS_W, CONFIG.CANVAS_H);
     
-    // Estrellas animadas (efecto parallax)
-    if (!window._starField) {
-        window._starField = [];
-        for (let i = 0; i < 50; i++) {
-            window._starField.push({
-                x: Math.random() * CONFIG.CANVAS_W,
-                y: Math.random() * CONFIG.CANVAS_H,
-                size: Math.random() * 2,
-                alpha: Math.random(),
-                speed: 0.1 + Math.random() * 0.3
-            });
+    // Sistema de parallax mejorado con 3 capas
+    if (window.bgLayers && window.bgLayers.length > 0) {
+        for (let layerIdx = 0; layerIdx < window.bgLayers.length; layerIdx++) {
+            const layer = window.bgLayers[layerIdx];
+            for (let star of layer) {
+                const pulse = Math.sin(time * star.speed + star.x) * 0.3;
+                const alpha = Math.max(0, Math.min(1, star.alpha + pulse));
+                
+                // Parallax effect basado en movimiento del jugador
+                let offsetX = 0, offsetY = 0;
+                if (typeof player !== 'undefined' && player.vx !== undefined) {
+                    offsetX = -(player.vx || 0) * star.parallaxSpeed * 0.02;
+                    offsetY = -(player.vy || 0) * star.parallaxSpeed * 0.02;
+                }
+                
+                // Color según tier
+                let starColor = '255, 255, 255';
+                if (hasBoss) {
+                    if (hasBoss.tier === 2) starColor = '100, 200, 255';
+                    else if (hasBoss.tier === 3) starColor = '200, 100, 255';
+                    else if (hasBoss.tier === 4) starColor = '255, 50, 100';
+                }
+                
+                ctx.fillStyle = `rgba(${starColor}, ${alpha})`;
+                ctx.beginPath();
+                ctx.arc(star.x + offsetX, star.y + offsetY, star.size, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Bloom effect en estrellas grandes
+                if (window.bloomEffect && window.bloomEffect.active && star.size > 1.5) {
+                    ctx.shadowBlur = 8 * window.bloomEffect.intensity;
+                    ctx.shadowColor = `rgba(${starColor}, ${alpha * 0.6})`;
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            }
         }
-    }
-    const time = performance.now() / 1000;
-    for (let star of window._starField) {
-        star.alpha = 0.3 + Math.sin(time * star.speed + star.x) * 0.4;
-        ctx.fillStyle = `rgba(255, 255, 255, ${Math.max(0, star.alpha)})`;
-        ctx.beginPath();
-        ctx.arc(star.x, star.y, star.size, 0, Math.PI * 2);
-        ctx.fill();
     }
 
     // Paredes con gradiente y resplandor
@@ -531,9 +684,10 @@ function draw() {
         ctx.fillStyle = healthColor;
         ctx.fillRect(e.x - barW/2, e.y - e.type.size/2 - 12, barW * (e.hp / e.maxHp), 6);
 
-        // BOSS REMASTERIZADO con efectos por fase
-        if (e.type === ENEMY_TYPES.BOSS) {
-            const phase = e.visualPhase || 1;
+        // BOSS REMASTERIZADO con efectos por fase y sistema de 20 bosses
+        const isBoss = (e.type === ENEMY_TYPES.BOSS) || (e.bossNumber && e.type && e.type.size >= 65);
+        if (isBoss) {
+            const phase = e.visualPhase || e.currentPhaseIndex || 1;
             const bossPulse = 0.6 + Math.sin(time * 4) * 0.4;
             
             // Colores por fase
@@ -595,16 +749,52 @@ function draw() {
                 ctx.fill();
             }
             
-            // Indicador de fase (texto)
+            // Nombre del boss y tier
             ctx.save();
+            if (e.name) {
+                // Título del boss
+                ctx.fillStyle = '#ffffff';
+                ctx.font = 'bold 18px Arial';
+                ctx.textAlign = 'center';
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+                ctx.lineWidth = 4;
+                ctx.strokeText(e.name, e.x, e.y - e.type.size/2 - 60);
+                ctx.fillText(e.name, e.x, e.y - e.type.size/2 - 60);
+                
+                // Subtítulo
+                if (e.title) {
+                    ctx.fillStyle = phaseColor;
+                    ctx.font = '12px Arial';
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
+                    ctx.lineWidth = 3;
+                    ctx.strokeText(e.title, e.x, e.y - e.type.size/2 - 45);
+                    ctx.fillText(e.title, e.x, e.y - e.type.size/2 - 45);
+                }
+                
+                // Indicador de tier
+                if (e.tier) {
+                    const tierNames = ['', 'TERRITORIAL', 'BESTIA', 'PLANETARIA', 'CÓSMICA'];
+                    const tierColors = ['', '#4CAF50', '#FF9800', '#9C27B0', '#F44336'];
+                    ctx.fillStyle = tierColors[e.tier] || '#ffffff';
+                    ctx.font = 'bold 10px Arial';
+                    ctx.strokeStyle = 'rgba(0, 0, 0, 0.9)';
+                    ctx.lineWidth = 2;
+                    const tierText = `[${tierNames[e.tier]}]`;
+                    ctx.strokeText(tierText, e.x, e.y - e.type.size/2 - 30);
+                    ctx.fillText(tierText, e.x, e.y - e.type.size/2 - 30);
+                }
+            }
+            
+            // Indicador de fase (texto)
             ctx.fillStyle = phaseColor;
             ctx.font = 'bold 14px Arial';
             ctx.textAlign = 'center';
             ctx.strokeStyle = 'rgba(0, 0, 0, 0.8)';
             ctx.lineWidth = 3;
             const phaseText = phase === 4 ? 'ENRAGE!' : `Fase ${phase}`;
-            ctx.strokeText(phaseText, e.x, e.y - e.type.size/2 - 30);
-            ctx.fillText(phaseText, e.x, e.y - e.type.size/2 - 30);
+            const phaseY = e.name ? e.y - e.type.size/2 - 15 : e.y - e.type.size/2 - 30;
+            ctx.strokeText(phaseText, e.x, phaseY);
+            ctx.fillText(phaseText, e.x, phaseY);
             ctx.restore();
         }
 

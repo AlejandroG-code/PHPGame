@@ -21,6 +21,11 @@ function update(dt) {
         updateScreenShake(dt);
     }
     
+    // Actualizar chromatic aberration
+    if (typeof updateChromaticEffect === 'function') {
+        updateChromaticEffect(dt);
+    }
+    
     // Actualizar player trail
     if (typeof updatePlayerTrail === 'function') {
         updatePlayerTrail(dt);
@@ -173,8 +178,11 @@ function update(dt) {
     for (let i = enemies.length - 1; i >= 0; i--) {
         const e = enemies[i];
 
+        // Detectar si es boss (nuevo sistema o legacy)
+        const isBoss = (e.type === ENEMY_TYPES.BOSS) || (e.bossNumber !== undefined) || (e.type && e.type.is_boss);
+        
         // Movimiento para TODOS los enemigos (no boss)
-        if (e.type !== ENEMY_TYPES.BOSS) {
+        if (!isBoss) {
             e.moveTimer -= dt;
             e.x += e.vx * dt + Math.sin((performance.now()/1000) + i) * 6 * dt;
             e.y += e.vy * dt + Math.cos((performance.now()/1000) + i) * 6 * dt;
@@ -235,50 +243,81 @@ function update(dt) {
                 e.nextAttackTelegraph = Math.max(0, e.nextAttackTelegraph - dt);
             }
             
-            // Patrones de ataque por fase
+            // SISTEMA DE ATAQUES DE BOSSES ESPECÍFICOS
             if (e.shootTimer <= 0) {
-                if (currentPhase === 1) {
-                    // Fase 1: Círculos + ráfagas básicas
-                    if (Math.random() < 0.5) {
-                        shootCircle(e, 16, 160);
-                    } else {
-                        shootBurst(e, player, 5);
+                // Si tiene bossNumber, usar sus ataques específicos
+                if (e.bossNumber && e.type.phases && e.type.phases.length > 0) {
+                    // Determinar fase actual según HP
+                    let phaseData = e.type.phases[0];
+                    for (let p of e.type.phases) {
+                        if (hpPercent <= p.hp) {
+                            phaseData = p;
+                        }
                     }
-                    e.shootTimer = 1.2;
-                } else if (currentPhase === 2) {
-                    // Fase 2: Espirales + proyectiles guiados
-                    if (Math.random() < 0.6) {
-                        shootSpiral(e, 10, 170);
+                    
+                    // Actualizar color y índice de fase
+                    e.currentPhaseIndex = e.type.phases.indexOf(phaseData);
+                    e.visualPhase = e.currentPhaseIndex + 1;
+                    
+                    // Usar el patrón de la fase
+                    const patternName = phaseData.pattern;
+                    const attackMeta = (typeof BOSS_ATTACKS !== 'undefined' && BOSS_ATTACKS[patternName]) 
+                        ? BOSS_ATTACKS[patternName] 
+                        : (typeof ATTACKS !== 'undefined' && ATTACKS[patternName]) 
+                            ? ATTACKS[patternName] 
+                            : null;
+                    
+                    if (attackMeta && typeof handleEnemyPattern === 'function') {
+                        e._lastPattern = patternName;
+                        handleEnemyPattern(e, patternName, attackMeta);
                     } else {
-                        shootAimed(e, player, 6, 0.3, 140, {tracking: 0.04});
+                        // Fallback a círculo
+                        shootCircle(e, 16 + (currentPhase * 4), 160 + (currentPhase * 20));
                     }
-                    e.shootTimer = 0.8;
-                } else if (currentPhase === 3) {
-                    // Fase 3: Barrages rápidas + laser sweep
-                    if (Math.random() < 0.7) {
-                        shootCircle(e, 24, 200);
-                    } else {
-                        shootCone(e, player, 8, 1.5, 220);
-                    }
-                    e.shootTimer = 0.6;
+                    
+                    e.shootTimer = e.type.shootInterval || 1.0;
                 } else {
-                    // Fase 4 ENRAGE: TODO MEZCLADO
-                    const r = Math.random();
-                    if (r < 0.3) {
-                        shootCircle(e, 30, 180);
-                    } else if (r < 0.6) {
-                        shootAimed(e, player, 12, 0.5, 240);
+                    // Boss genérico (fallback)
+                    if (currentPhase === 1) {
+                        if (Math.random() < 0.5) {
+                            shootCircle(e, 16, 160);
+                        } else {
+                            shootBurst(e, player, 5);
+                        }
+                        e.shootTimer = 1.2;
+                    } else if (currentPhase === 2) {
+                        if (Math.random() < 0.6) {
+                            shootSpiral(e, 10, 170);
+                        } else {
+                            shootAimed(e, player, 6, 0.3, 140, {tracking: 0.04});
+                        }
+                        e.shootTimer = 0.8;
+                    } else if (currentPhase === 3) {
+                        if (Math.random() < 0.7) {
+                            shootCircle(e, 24, 200);
+                        } else {
+                            shootCone(e, player, 8, 1.5, 220);
+                        }
+                        e.shootTimer = 0.6;
                     } else {
-                        shootSpiral(e, 12, 200);
-                        shootBurst(e, player, 8);
+                        const r = Math.random();
+                        if (r < 0.3) {
+                            shootCircle(e, 30, 180);
+                        } else if (r < 0.6) {
+                            shootAimed(e, player, 12, 0.5, 240);
+                        } else {
+                            shootSpiral(e, 12, 200);
+                            shootBurst(e, player, 8);
+                        }
+                        e.shootTimer = 0.4;
                     }
-                    e.shootTimer = 0.4;
                 }
             }
         }
 
-        // Disparo para enemigos normales
-        if (!e.type.is_boss) {
+        // Disparo para enemigos normales (no bosses)
+        const isEnemyBoss = e.type.is_boss || e.bossNumber !== undefined;
+        if (!isEnemyBoss) {
             e.shootTimer -= dt;
             if (e.shootTimer <= 0) {
                 const attackList = e.type.attacks && e.type.attacks.length ? e.type.attacks : ['circle'];

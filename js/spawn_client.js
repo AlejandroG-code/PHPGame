@@ -13,27 +13,92 @@ function loadRoom(roomNum) {
     player.x = CONFIG.CANVAS_W/2;
     player.y = CONFIG.CANVAS_H - 100;
 
-    // Boss every WORLD.BOSS_INTERVAL rooms (fallback 5)
-    const bossInterval = (typeof WORLD !== 'undefined' && WORLD.BOSS_INTERVAL) ? WORLD.BOSS_INTERVAL : 5;
+    // DEBUG: Ver qué room se está cargando
+    console.log('🚪 Cargando Room:', roomNum);
+
+    // SISTEMA DE BOSSES PROGRESIVO - Boss cada 10 habitaciones
+    const bossInterval = 10;
     
     // Rest room removida
     isRestRoom = false;
     
-    // BOSS ROOM
-    if (roomNum % bossInterval === 0) {
-        const bossHp = ENEMY_TYPES.BOSS.hp + Math.floor(roomNum/10) * 30;
-        enemies.push({
-            x: CONFIG.CANVAS_W/2,
-            y: CONFIG.CANVAS_H/2 - 20,
-            type: ENEMY_TYPES.BOSS,
-            hp: bossHp,
-            maxHp: bossHp,
-            shootTimer: 1.0,
-            phaseTimer: 3.0,
-            phase: 3,
-            spiralAngle: 0,
-            moveDir: 1
-        });
+    // DEBUG: Ver si es room de boss
+    const isBossRoom = roomNum % bossInterval === 0;
+    console.log('🎲 Es room de boss?', isBossRoom, '(roomNum:', roomNum, '% bossInterval:', bossInterval, '=', roomNum % bossInterval, ')');
+    
+    // BOSS ROOM - Bosses progresivos (1-20)
+    if (isBossRoom) {
+        const bossNumber = Math.min(20, Math.floor(roomNum / bossInterval));
+        
+        // DEBUG: Verificar bosses
+        console.log('🎯 Room:', roomNum, '| Boss Number:', bossNumber);
+        console.log('📦 BOSSES disponibles:', typeof BOSSES !== 'undefined' ? Object.keys(BOSSES) : 'UNDEFINED');
+        
+        // Intentar acceder al boss de múltiples formas (por si las claves son strings)
+        let bossData = null;
+        if (typeof BOSSES !== 'undefined') {
+            bossData = BOSSES[bossNumber] || BOSSES[String(bossNumber)] || null;
+        }
+        
+        console.log('👑 Boss cargado:', bossData ? bossData.name : 'NULL - usando fallback');
+        if (!bossData) {
+            console.warn('⚠️ No se pudo cargar el boss', bossNumber, '- Claves disponibles:', typeof BOSSES !== 'undefined' ? Object.keys(BOSSES) : 'undefined');
+        }
+        
+        // EFECTO ESPECIAL PARA BOSS FINAL
+        if (bossNumber === 20) {
+            if (typeof triggerChromatic === 'function') triggerChromatic(1.5, 3);
+            if (typeof shakeScreen === 'function') shakeScreen(15, 2);
+            console.log('%c⚡ BOSS FINAL: THE ABSOLUTE DEITY ⚡', 'color: #ff0000; font-size: 24px; font-weight: bold;');
+        }
+        
+        if (bossData) {
+            // Usar el boss específico del array
+            const bossHp = bossData.hp + Math.floor(roomNum/30) * 20; // Escala gradual
+            
+            // LOG PROMINENTE
+            console.log('%c════════════════════════════════════════', 'color: #f39c12; font-weight: bold;');
+            console.log('%c👑 BOSS CARGADO:', 'color: #e74c3c; font-size: 16px; font-weight: bold;');
+            console.log('%c   Nombre: ' + bossData.name, 'color: #3498db; font-size: 14px;');
+            console.log('%c   Título: ' + bossData.title, 'color: #2ecc71; font-size: 12px;');
+            console.log('%c   Tier: ' + bossData.tier + ' | HP: ' + bossHp, 'color: #9b59b6; font-size: 12px;');
+            console.log('%c════════════════════════════════════════', 'color: #f39c12; font-weight: bold;');
+            
+            enemies.push({
+                x: CONFIG.CANVAS_W/2,
+                y: CONFIG.CANVAS_H/2 - 20,
+                type: bossData,
+                hp: bossHp,
+                maxHp: bossHp,
+                shootTimer: bossData.shootInterval || 1.0,
+                phaseTimer: 2.0,
+                phase: 0,
+                spiralAngle: 0,
+                moveDir: 1,
+                bossNumber: bossNumber,
+                name: bossData.name,
+                title: bossData.title,
+                tier: bossData.tier,
+                currentPhaseIndex: 0,
+                mechanics: bossData.mechanics || [],
+                hasResurrected: false
+            });
+        } else {
+            // Fallback al boss genérico si no existe
+            const bossHp = ENEMY_TYPES.BOSS.hp + Math.floor(roomNum/10) * 30;
+            enemies.push({
+                x: CONFIG.CANVAS_W/2,
+                y: CONFIG.CANVAS_H/2 - 20,
+                type: ENEMY_TYPES.BOSS,
+                hp: bossHp,
+                maxHp: bossHp,
+                shootTimer: 1.0,
+                phaseTimer: 3.0,
+                phase: 3,
+                spiralAngle: 0,
+                moveDir: 1
+            });
+        }
         // Crear trampas alrededor del mapa (anillo) que se mueven y telegrafían su próxima posición
         const trapCount = 12;
         const cx = CONFIG.CANVAS_W/2;

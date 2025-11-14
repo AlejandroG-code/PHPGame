@@ -341,6 +341,101 @@ function handleEnemyPattern(e, pattern, meta) {
             e.shootTimer = 3.0 + Math.random() * 1.5;
             break;
 
+        // ===== BOSS ATTACKS - ETAPA I: TERRITORIAL =====
+        case 'slime_god_split':
+        case 'slime_god_rain':
+        case 'slime_god_bounce':
+        case 'scaled_venom_burst':
+        case 'scaled_coil_strike':
+        case 'scaled_tail_sweep':
+        case 'abyss_web_trap':
+        case 'abyss_shadow_bolt':
+        case 'abyss_cocoon':
+        case 'runic_hammer_slam':
+        case 'runic_shield_bash':
+        case 'runic_explosion':
+        case 'volcanic_eruption':
+        case 'volcanic_meteor':
+        case 'volcanic_lava_pool':
+        // ===== BOSS ATTACKS - ETAPA II: BESTIA =====
+        case 'griffin_dive_strike':
+        case 'griffin_feather_storm':
+        case 'griffin_aerial_sweep':
+        case 'pyre_inferno_breath':
+        case 'pyre_flame_spiral':
+        case 'pyre_fire_rain':
+        case 'trio_ice_fire_thunder':
+        case 'trio_elemental_chaos':
+        case 'trio_fusion_blast':
+        case 'rune_forge_hammer':
+        case 'rune_enchant_barrage':
+        case 'rune_seal_explosion':
+        case 'vampire_blood_drain':
+        case 'vampire_bat_swarm':
+        case 'vampire_dark_ritual':
+        // ===== BOSS ATTACKS - ETAPA III: PLANETARIA =====
+        case 'midas_golden_touch':
+        case 'midas_treasure_burst':
+        case 'midas_coin_rain':
+        case 'illusion_clone_assault':
+        case 'illusion_mirror_shatter':
+        case 'illusion_void_prison':
+        case 'chronos_time_stop':
+        case 'chronos_temporal_rift':
+        case 'chronos_age_decay':
+        case 'phoenix_solar_flare':
+        case 'phoenix_rebirth_nova':
+        case 'phoenix_plasma_wings':
+        case 'nexus_dimension_tear':
+        case 'nexus_void_lance':
+        case 'nexus_reality_collapse':
+        // ===== BOSS ATTACKS - ETAPA IV: CÓSMICA =====
+        case 'void_entropy_wave':
+        case 'void_singularity':
+        case 'void_unraveling':
+        case 'wyrm_cosmic_breath':
+        case 'wyrm_meteor_shower':
+        case 'wyrm_planet_crush':
+        case 'soul_essence_drain':
+        case 'soul_spectral_army':
+        case 'soul_life_transfer':
+        case 'unbound_chaos_storm':
+        case 'unbound_reality_break':
+        case 'unbound_omnidirectional':
+        case 'deity_divine_judgment':
+        case 'deity_creation_destruction':
+        case 'deity_infinite_cycle':
+        case 'deity_apocalypse':
+            // Todos los ataques de bosses usan sus metadatos específicos
+            // Determinar tipo de patrón base
+            const count = meta.count || 16;
+            const speed = meta.speed || 180;
+            const opts = {color: meta.color, shape: meta.shape};
+            
+            // Patrones según tipo
+            if (meta.pattern === 'circle' || meta.pattern === 'burst' || meta.pattern === 'nova' || 
+                meta.pattern === 'shockwave' || meta.pattern === 'seal' || meta.pattern === 'omni') {
+                shootCircle(e, count, speed, opts);
+            } else if (meta.pattern === 'spiral' || meta.pattern === 'double_spiral' || 
+                       meta.pattern === 'slow_spiral' || meta.pattern === 'infinite') {
+                shootSpiral(e, Math.floor(count / 2), speed, opts);
+            } else if (meta.pattern === 'aimed' || meta.pattern === 'aimed_spread' || 
+                       meta.pattern === 'barrage' || meta.pattern === 'clone_fire' ||
+                       meta.pattern === 'judgment' || meta.pattern === 'lance') {
+                shootAimed(e, player, count, 0.4, speed, opts);
+            } else if (meta.pattern === 'cone' || meta.pattern === 'cone_wide' || 
+                       meta.pattern === 'breath_cosmic' || meta.pattern === 'wings') {
+                shootCone(e, player, count, 1.2, speed, opts);
+            } else if (meta.pattern === 'burst_multi' || meta.pattern === 'tri_element') {
+                shootBurst(e, player, Math.floor(count / 4), opts);
+            } else {
+                // Fallback a círculo
+                shootCircle(e, count, speed, opts);
+            }
+            
+            e.shootTimer = e.type.shootInterval || 1.0;
+            break;
+
         // ===== FALLBACK =====
         default:
             // fallback
