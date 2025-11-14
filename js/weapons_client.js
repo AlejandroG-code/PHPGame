@@ -6,7 +6,15 @@ function shootCircle(enemy, count = 12, speed = CONFIG.ENEMY_BULLET_SPEED, opts 
         const angle = (i / count) * Math.PI * 2;
         const bullet = { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: 6 };
         Object.assign(bullet, opts);
+        // Visual properties
+        bullet.color = bullet.color || (enemy && enemy.type && enemy.type.color) || opts.color || '#ffd166';
+        bullet.glow = true;
+        bullet.trailColor = bullet.trailColor || bullet.color;
         enemyBullets.push(bullet);
+        // initial trail particles
+        if (typeof window !== 'undefined' && window.particles) {
+            window.particles.push({ x: bullet.x, y: bullet.y, vx: -bullet.vx * 0.02, vy: -bullet.vy * 0.02, life: 0.35, maxLife:0.35, size: 2, color: bullet.trailColor, blend: 'lighter' });
+        }
     }
 }
 
@@ -20,7 +28,11 @@ function shootSpiral(enemy, bulletsPerWave = 6, speed = 160, opts = {}) {
         const angle = enemy.spiralAngle + (i / bulletsPerWave) * Math.PI * 2;
         const bullet = { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: 6 };
         Object.assign(bullet, opts);
+        bullet.color = bullet.color || (enemy && enemy.type && enemy.type.color) || opts.color || '#9ad3bc';
+        bullet.glow = true;
+        bullet.trailColor = bullet.trailColor || bullet.color;
         enemyBullets.push(bullet);
+        if (typeof window !== 'undefined' && window.particles) window.particles.push({ x: bullet.x, y: bullet.y, vx: -bullet.vx*0.02, vy: -bullet.vy*0.02, life: 0.4, maxLife:0.4, size:2, color: bullet.trailColor, blend: 'lighter' });
     }
 }
 
@@ -32,7 +44,11 @@ function shootAimed(enemy, target, count = 1, spread = 0.3, speed = 300, opts = 
         const angle = base + (i - (count-1)/2) * spread;
         const bullet = { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: 6 };
         Object.assign(bullet, opts);
+        bullet.color = bullet.color || (enemy && enemy.type && enemy.type.color) || opts.color || '#ff9aa2';
+        bullet.glow = true;
+        bullet.trailColor = bullet.trailColor || bullet.color;
         enemyBullets.push(bullet);
+        if (typeof window !== 'undefined' && window.particles) window.particles.push({ x: bullet.x, y: bullet.y, vx: -bullet.vx*0.02, vy: -bullet.vy*0.02, life: 0.35, maxLife:0.35, size:2, color: bullet.trailColor, blend: 'lighter' });
     }
 }
 
@@ -55,6 +71,10 @@ function shootCone(enemy, target, count = 5, arc = 1.0, speed = 260, opts = {}) 
         const angle = base + t * arc;
         const bullet = { x: enemy.x, y: enemy.y, vx: Math.cos(angle) * speed, vy: Math.sin(angle) * speed, r: 6 };
         Object.assign(bullet, opts);
+        bullet.color = bullet.color || (enemy && enemy.type && enemy.type.color) || opts.color || '#ffd6a5';
+        bullet.glow = true;
+        bullet.trailColor = bullet.trailColor || bullet.color;
         enemyBullets.push(bullet);
+        if (typeof window !== 'undefined' && window.particles) window.particles.push({ x: bullet.x, y: bullet.y, vx: -bullet.vx*0.02, vy: -bullet.vy*0.02, life: 0.35, maxLife:0.35, size:2, color: bullet.trailColor, blend: 'lighter' });
     }
 }

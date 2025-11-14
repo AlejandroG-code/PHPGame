@@ -22,6 +22,16 @@ $ENEMY_TYPES = [
 	'BABY_DRAGON'  => ['color' => '#e84393', 'size' => 26, 'hp' => 4, 'shootInterval' => 1.6, 'attacks' => ['fire_breath', 'fireball']],
 	'BABY_GRIFFIN' => ['color' => '#f39c12', 'size' => 24, 'hp' => 4, 'shootInterval' => 1.6, 'attacks' => ['swoop', 'talon_strike']],
 	'SNAKE'        => ['color' => '#2ecc71', 'size' => 14, 'hp' => 1, 'shootInterval' => 1.2, 'attacks' => ['venom_spit', 'coil']],
+	// Enemigos avanzados
+	'WYVERN'       => ['color' => '#d91e18', 'size' =>  30, 'hp' => 8, 'shootInterval' => 1.5, 'attacks' => ['acid_spit','wing_buffet']],
+	'TROLL'        => ['color' => '#27ae60', 'size' =>  32, 'hp' => 10, 'shootInterval' => 2.8, 'attacks' => ['rock_throw','regenerate']],
+	'LICH'         => ['color' => '#8e44ad', 'size' => 28, 'hp' => 9, 'shootInterval' => 2.2, 'attacks' => ['dark_bolt','summon_skeletons']],
+	'OGRE'         => ['color' => '#c0392b', 'size' =>  34, 'hp' => 12, 'shootInterval' => 3.0, 'attacks' => ['smash','stomp']],
+	'VAMPIRE'      => ['color' => '#2c3e50', 'size' => 26, 'hp' => 7, 'shootInterval' => 1.8, 'attacks' => ['blood_suck','bat_swarm']],
+	'DEMON'        => ['color' => '#e74c3c', 'size' => 36, 'hp' => 15, 'shootInterval' => 2.5, 'attacks' => ['fireball','hellfire']],
+	'GOLEM'        => ['color' => '#7f8c8d', 'size' => 40, 'hp' => 20, 'shootInterval' => 3.5, 'attacks' => ['rock_throw','earthquake']],
+	// Enemigo especial - jefe menor
+	'MINI_BOSS'    => ['color' => '#d35400', 'size' => 40, 'hp' => 25, 'shootInterval' => 2.0, 'attacks' => ['mini_boss_special','power_strike'], 'is_boss' => true],
 
 	// Boss REMASTERIZADO - NERFEADO pero con FASES VISUALES
 	'BOSS'         => ['color' => '#c0392b', 'size' => 70, 'hp' => 30, 'shootInterval' => 1.2, 'attacks' => ['boss_phase1','boss_phase2','boss_phase3','boss_phase4'], 'is_boss' => true, 'phases' => 4]

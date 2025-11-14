@@ -31,8 +31,11 @@ function backToMenu() {
 }
 
 function showDeathScreen() {
-    document.getElementById('finalRoom').textContent = currentRoom;
+    const final = Math.min(currentRoom, CONFIG.MAX_ROOMS || currentRoom);
+    document.getElementById('finalRoom').textContent = final;
     document.getElementById('finalKills').textContent = totalKills;
+    const title = document.getElementById('deathTitle');
+    if (title) title.textContent = '💀 GAME OVER 💀';
     document.getElementById('deathScreen').classList.add('active');
 }
 

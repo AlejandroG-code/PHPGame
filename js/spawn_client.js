@@ -130,6 +130,7 @@ function loadRoom(roomNum) {
                 _nextAngle: null
             });
         }
+        try { console.log('[ROOM]', roomNum, '-> BOSS ROOM (interval', bossInterval, ')'); } catch (e) {}
         return;
     }
 
@@ -201,4 +202,22 @@ function loadRoom(roomNum) {
         enemies.push(enemy);
         spawned.push(enemy);
     }
+
+    // Generación de cofres cada CONFIG.CHEST_INTERVAL habitaciones (posición aleatoria)
+    const chestInterval = (typeof CONFIG !== 'undefined' && CONFIG.CHEST_INTERVAL) ? CONFIG.CHEST_INTERVAL : 3;
+    if (roomNum % chestInterval === 0) {
+        // 80% cofre normal con skill, 20% mimic
+        const isMimic = Math.random() < 0.20;
+        const cx = 120 + Math.random() * (CONFIG.CANVAS_W - 240);
+        const cy = 120 + Math.random() * (CONFIG.CANVAS_H - 240);
+        if (isMimic) {
+            // Spawn a mimic enemy at chest position
+            const mimicType = ENEMY_TYPES.MIMIC || { color: '#d35400', size: 24, hp: 4 };
+            enemies.push({ x: cx, y: cy, type: mimicType, hp: mimicType.hp, maxHp: mimicType.hp, shootTimer: 1.0, moveTimer: 1.0, moveSpeed: 30 });
+        } else {
+            // Represent a chest as a hazard of type 'chest' so UI can render it and player can open it
+            hazards.push({ type: 'chest', x: cx, y: cy, r: 20, opened: false, containsSkill: true });
+        }
+    }
+    try { console.log('[ROOM]', roomNum, '-> NORMAL ROOM'); } catch (e) {}
 }

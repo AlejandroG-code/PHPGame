@@ -355,6 +355,10 @@ include __DIR__ . '/boss_attacks.php';
     <script>
     <?php include __DIR__ . '/client_config.php'; ?>
 
+    // Exponer número máximo de habitaciones y frecuencia de cofres al cliente
+    CONFIG.MAX_ROOMS = <?php echo (int)$config['max_rooms']; ?>;
+    CONFIG.CHEST_INTERVAL = 3; // cada 3 habitaciones puede aparecer un cofre
+
     // Sanity defaults to avoid invisible entities if PHP config is missing
     CONFIG.CANVAS_W = Math.max(CONFIG.CANVAS_W || 0, 600);
     CONFIG.CANVAS_H = Math.max(CONFIG.CANVAS_H || 0, 400);
@@ -379,7 +383,8 @@ include __DIR__ . '/boss_attacks.php';
         h: CONFIG.PLAYER_SIZE, 
         health: CONFIG.MAX_HEALTH,
         shootCooldown: 0,
-        effects: { poisonTimer: 0, poisonTick: 0, poisonTickInterval: 0, slowTimer: 0, slowAmount: 0 }
+        effects: { poisonTimer: 0, poisonTick: 0, poisonTickInterval: 0, slowTimer: 0, slowAmount: 0 },
+        facing: 'down' // 'up','down','left','right'
     };
 
     var keys = { left:false, right:false, up:false, down:false };
