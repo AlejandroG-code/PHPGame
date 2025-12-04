@@ -65,10 +65,7 @@ function updateUI() {
 
     const r = document.getElementById('room');
     if (r && typeof currentRoom !== 'undefined') {
-        // Mostrar progreso hacia boss final
-        const nextBoss = Math.ceil(currentRoom / 10) * 10;
-        const finalBoss = 200;
-        r.textContent = currentRoom + (nextBoss <= finalBoss ? ` (Boss: ${nextBoss})` : ' [FINAL REACHED]');
+        r.textContent = currentRoom;
     }
     const k = document.getElementById('kills');
     if (k) k.textContent = (typeof totalKills !== 'undefined' ? totalKills : 0);
@@ -91,14 +88,6 @@ window.SPRITES = window.SPRITES || {};
     <p>WASD - Mover tu personaje</p>
     <p>Flechas - Disparar</p>
     <p>Elimina todos los enemigos para abrir la puerta</p>
-    <p style="margin-top: 20px; font-size: 14px; opacity: 0.8; color: #f39c12;">⚔️ 20 BOSSES ÉPICOS ⚔️</p>
-    <p style="font-size: 13px; opacity: 0.7;">Boss cada 10 habitaciones | Boss Final: Room 200</p>
-    <p style="font-size: 12px; opacity: 0.6; margin-top: 10px;">
-        Etapa I (10-50): Territorial<br>
-        Etapa II (60-100): Bestia<br>
-        Etapa III (110-150): Planetaria<br>
-        Etapa IV (160-200): Cósmica
-    </p>
     <button onclick="startGame()">INICIAR JUEGO</button>
 </div>
 

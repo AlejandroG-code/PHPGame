@@ -10,20 +10,18 @@ $config = [
     'canvas_height' => 700,         // px - MÁS ESPACIO VERTICAL
     'player_speed' => 200,          // px/s - MÁS RÁPIDO Y RESPONSIVO
     'player_size' => 28,            // px - HITBOX MÁS PEQUEÑA
-    'player_health' => 20,         // HP - MÁS HEALTH PARA BALANCEAR
+    'player_health' => 10,         // HP - REDUCIDO PARA MÁS DIFICULTAD
     'bullet_speed' => 550,          // px/s - BALAS MÁS RÁPIDAS
     'enemy_bullet_speed' => 160,    // px/s - ENEMIGOS MÁS LENTOS = ESQUIVABLE
     'max_rooms' => 200              // 200 NIVELES - Boss final en room 200!
 ];
 
-// incluir definiciones modulares (armas, ataques, enemigos, mundo, bosses)
-include __DIR__ . '/guns.php';
-include __DIR__ . '/attacks.php';
-include __DIR__ . '/enemies.php';
-include __DIR__ . '/world.php';
-include __DIR__ . '/skills.php';
-include __DIR__ . '/bosses.php';
-include __DIR__ . '/boss_attacks.php';
+// incluir definiciones modulares
+include __DIR__ . '/php/data/attacks.php';
+include __DIR__ . '/php/data/enemies.php';
+include __DIR__ . '/php/data/world.php';
+include __DIR__ . '/php/data/skills.php';
+
 
 ?>
 <!DOCTYPE html>
@@ -353,7 +351,7 @@ include __DIR__ . '/boss_attacks.php';
     <!-- HUD moved to ui.php -->
 
     <script>
-    <?php include __DIR__ . '/client_config.php'; ?>
+    <?php include __DIR__ . '/php/includes/client_config.php'; ?>
 
     // Exponer número máximo de habitaciones y frecuencia de cofres al cliente
     CONFIG.MAX_ROOMS = <?php echo (int)$config['max_rooms']; ?>;
@@ -363,7 +361,6 @@ include __DIR__ . '/boss_attacks.php';
     CONFIG.CANVAS_W = Math.max(CONFIG.CANVAS_W || 0, 600);
     CONFIG.CANVAS_H = Math.max(CONFIG.CANVAS_H || 0, 400);
     CONFIG.PLAYER_SIZE = Math.max(CONFIG.PLAYER_SIZE || 0, 20);
-    CONFIG.MAX_HEALTH = Math.max(CONFIG.MAX_HEALTH || 0, 100);
 
     var cvs = document.getElementById('game');
     var ctx = cvs.getContext('2d');
@@ -401,7 +398,7 @@ include __DIR__ . '/boss_attacks.php';
     var roomTransition = 0; // 0-1, para fade in/out al cambiar habitación
 
     // ===== TIPOS DE ENEMIGOS / datos inyectados por PHP (ahora desde client_data.php) =====
-    <?php include __DIR__ . '/client_data.php'; ?>
+    <?php include __DIR__ . '/php/includes/client_data.php'; ?>
 
     // DEBUG: Verificar que BOSSES está cargado correctamente
     console.log('%c🔍 VERIFICACIÓN DE BOSSES:', 'color: #e67e22; font-size: 14px; font-weight: bold;');
@@ -467,13 +464,13 @@ include __DIR__ . '/boss_attacks.php';
 
     <script src="js/utils.js"></script>
     <script src="js/weapons_client.js"></script>
-    <script src="js/spawn_client.js"></script>
+    <script src="js/systems/spawn.js"></script>
     <script src="js/enemies_client.js"></script>
-    <script src="js/world_client.js"></script>
-    <script src="js/controls.js"></script>
-    <script src="js/game_state.js"></script>
+    <script src="js/systems/world.js"></script>
+    <script src="js/input/controls.js"></script>
+    <script src="js/core/game_state.js"></script>
     <script src="js/game_logic.js"></script>
-    <script src="js/skills_client.js"></script>
+    <script src="js/systems/skills.js"></script>
 
     <?php include __DIR__ . '/ui.php'; ?>
 
